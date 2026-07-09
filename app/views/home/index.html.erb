@@ -506,6 +506,7 @@
     <div class="flex items-center gap-6 text-sm text-ink-subtle">
       <a href="#features" class="hover:text-ink-muted transition-colors"><%= t("views.home.nav.features") %></a>
       <a href="#training" class="hover:text-ink-muted transition-colors"><%= t("views.home.nav.training") %></a>
+      <%= link_to t("views.home.footer.privacy_policy"), privacy_policy_path, class: "hover:text-ink-muted transition-colors" %>
       <%= link_to t("views.home.footer.login"), new_user_session_path, class: "hover:text-ink-muted transition-colors" %>
       <%= link_to t("views.home.footer.signup"), new_user_registration_path, class: "hover:text-ink-muted transition-colors" %>
     </div>

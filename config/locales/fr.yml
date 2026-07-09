@@ -856,6 +856,7 @@ fr:
         login: "Se connecter"
         signup: "S'inscrire"
         tagline: "Nutrition & Entraînement"
+        privacy_policy: "Politique de confidentialité"
 
     components:
       recipe_card:

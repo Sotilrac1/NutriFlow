@@ -1,0 +1,191 @@
+<%# LEGAL NOTE: This policy text is a GDPR-aware starting template for NutriFlow's
+    actual data practices — not legal advice. Carlos and Victor should read it
+    fully and adjust before launch, especially the [PLACEHOLDER] items. %>
+
+<header class="border-b border-surface-border/40 bg-surface-base/80 backdrop-blur-md">
+  <div class="max-w-4xl mx-auto px-6 lg:px-8 h-16 flex items-center justify-between">
+    <%= link_to root_path, class: "flex items-center gap-2.5" do %>
+      <%= image_tag "logo.png", class: "h-10 w-10", alt: "NutriFlow" %>
+      <span class="text-lg font-bold text-ink-primary">NutriFlow</span>
+    <% end %>
+    <%= link_to t("views.home.nav.login"), new_user_session_path,
+          class: "text-sm font-medium text-ink-muted hover:text-ink-primary transition-colors" %>
+  </div>
+</header>
+
+<main class="max-w-4xl mx-auto px-6 lg:px-8 py-12 lg:py-16">
+  <article class="text-ink-primary">
+    <h1 class="text-3xl lg:text-4xl font-bold tracking-tight mb-4">
+      Politique de Confidentialité / Privacy Policy
+    </h1>
+
+    <p class="text-ink-muted text-sm mb-8">
+      <strong>Dernière mise à jour / Last updated:</strong> 9 July 2026
+    </p>
+
+    <nav class="text-sm text-brand mb-12" aria-label="Language navigation">
+      <a href="#fr" class="hover:underline">Français</a>
+      <span class="text-ink-subtle mx-2">·</span>
+      <a href="#en" class="hover:underline">English</a>
+    </nav>
+
+    <div id="fr" class="scroll-mt-24 space-y-8 text-ink-muted leading-relaxed">
+      <h2 class="text-2xl font-semibold text-ink-primary">Politique de Confidentialité (Français)</h2>
+
+      <section>
+        <h3 class="text-lg font-semibold text-ink-primary mb-2">1. Qui sommes-nous</h3>
+        <p>
+          NutriFlow est une application de suivi nutritionnel et sportif, accessible via le site nutriflow.in et l&apos;application iOS NutriFlow. Le responsable du traitement des données est : <strong>[PLACEHOLDER — nom/structure juridique et adresse de contact]</strong>.
+        </p>
+      </section>
+
+      <section>
+        <h3 class="text-lg font-semibold text-ink-primary mb-2">2. Données que nous collectons</h3>
+        <ul class="list-disc pl-6 space-y-2">
+          <li><strong>Données de compte</strong> : adresse e-mail et mot de passe (stocké de manière chiffrée). Si vous utilisez « Se connecter avec Apple », nous recevons un identifiant Apple et, si vous l&apos;autorisez, votre adresse e-mail.</li>
+          <li><strong>Données de profil santé</strong> : âge, poids, taille, sexe, objectif (perte de poids, maintien, prise de muscle), niveau d&apos;activité, nombre de pas quotidien, objectif d&apos;hydratation. Ces données servent uniquement à calculer vos besoins nutritionnels personnalisés.</li>
+          <li><strong>Données nutritionnelles</strong> : aliments que vous enregistrez, recettes, journaux alimentaires, listes de courses.</li>
+          <li><strong>Données d&apos;activité (application iOS)</strong> : si vous l&apos;autorisez, l&apos;application lit votre nombre de pas depuis Apple Santé (HealthKit), en lecture seule, pour affiner le calcul de vos besoins caloriques. Nous n&apos;écrivons aucune donnée dans Apple Santé.</li>
+          <li><strong>Données d&apos;appareil photo (application iOS)</strong> : la caméra est utilisée uniquement pour scanner des codes-barres de produits alimentaires. Aucune image n&apos;est enregistrée ni transmise.</li>
+          <li><strong>Historique de scans (application iOS)</strong> : conservé localement sur votre appareil uniquement ; il n&apos;est pas transmis à nos serveurs.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h3 class="text-lg font-semibold text-ink-primary mb-2">3. Services tiers</h3>
+        <ul class="list-disc pl-6 space-y-2">
+          <li><strong>Open Food Facts</strong> : lorsque vous scannez un code-barres ou recherchez un produit, le code-barres ou le terme de recherche est envoyé à Open Food Facts (base de données alimentaire ouverte) pour récupérer les informations produit. Consultez leur politique : <%= link_to "https://world.openfoodfacts.org", "https://world.openfoodfacts.org", class: "text-brand hover:underline", target: "_blank", rel: "noopener noreferrer" %></li>
+          <li><strong>Apple</strong> : si vous utilisez « Se connecter avec Apple », l&apos;authentification est traitée par Apple selon leur politique de confidentialité.</li>
+          <li>Nous n&apos;utilisons <strong>aucun service publicitaire ni traceur analytique tiers</strong>.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h3 class="text-lg font-semibold text-ink-primary mb-2">4. Base légale et finalités (RGPD)</h3>
+        <p>
+          Nous traitons vos données sur la base de l&apos;exécution du contrat (fourniture du service NutriFlow) et, pour les données de santé (profil, activité), sur la base de votre <strong>consentement explicite</strong>, que vous pouvez retirer à tout moment en supprimant votre compte.
+        </p>
+      </section>
+
+      <section>
+        <h3 class="text-lg font-semibold text-ink-primary mb-2">5. Conservation</h3>
+        <p>
+          Vos données sont conservées tant que votre compte est actif. En cas de suppression de compte, vos données sont supprimées de nos systèmes dans un délai de <strong>[PLACEHOLDER — ex. 30 jours]</strong>.
+        </p>
+      </section>
+
+      <section>
+        <h3 class="text-lg font-semibold text-ink-primary mb-2">6. Vos droits</h3>
+        <p>
+          Conformément au RGPD, vous disposez des droits d&apos;accès, de rectification, d&apos;effacement, de portabilité, de limitation et d&apos;opposition sur vos données. Pour les exercer : <strong>[PLACEHOLDER — e-mail de contact]</strong>. Vous pouvez également saisir la CNIL (<%= link_to "cnil.fr", "https://www.cnil.fr", class: "text-brand hover:underline", target: "_blank", rel: "noopener noreferrer" %>).
+        </p>
+      </section>
+
+      <section>
+        <h3 class="text-lg font-semibold text-ink-primary mb-2">7. Sécurité</h3>
+        <p>
+          Les mots de passe sont chiffrés, les échanges avec nos serveurs se font en HTTPS, et l&apos;accès aux données est limité aux besoins du service.
+        </p>
+      </section>
+
+      <section>
+        <h3 class="text-lg font-semibold text-ink-primary mb-2">8. Mineurs</h3>
+        <p>
+          NutriFlow n&apos;est pas destiné aux personnes de moins de 15 ans. Nous ne collectons pas sciemment de données concernant des mineurs.
+        </p>
+      </section>
+
+      <section>
+        <h3 class="text-lg font-semibold text-ink-primary mb-2">9. Modifications</h3>
+        <p>
+          Toute modification de cette politique sera publiée sur cette page avec une nouvelle date de mise à jour.
+        </p>
+      </section>
+    </div>
+
+    <hr class="my-12 border-surface-border/50">
+
+    <div id="en" class="scroll-mt-24 space-y-8 text-ink-muted leading-relaxed">
+      <h2 class="text-2xl font-semibold text-ink-primary">Privacy Policy (English)</h2>
+
+      <section>
+        <h3 class="text-lg font-semibold text-ink-primary mb-2">1. Who we are</h3>
+        <p>
+          NutriFlow is a nutrition and fitness tracking service, available through nutriflow.in and the NutriFlow iOS app. The data controller is: <strong>[PLACEHOLDER — legal name/entity and contact address]</strong>.
+        </p>
+      </section>
+
+      <section>
+        <h3 class="text-lg font-semibold text-ink-primary mb-2">2. Data we collect</h3>
+        <ul class="list-disc pl-6 space-y-2">
+          <li><strong>Account data</strong>: email address and password (stored encrypted). If you use &quot;Sign in with Apple,&quot; we receive an Apple identifier and, if you allow it, your email address.</li>
+          <li><strong>Health profile data</strong>: age, weight, height, gender, goal (weight loss, maintenance, muscle gain), activity level, daily step count, hydration goal. Used solely to calculate your personalised nutrition targets.</li>
+          <li><strong>Nutrition data</strong>: foods you save, recipes, food logs, shopping lists.</li>
+          <li><strong>Activity data (iOS app)</strong>: with your permission, the app reads your step count from Apple Health (HealthKit), read-only, to refine your calorie calculations. We never write anything to Apple Health.</li>
+          <li><strong>Camera (iOS app)</strong>: the camera is used only to scan food product barcodes. No images are stored or transmitted.</li>
+          <li><strong>Scan history (iOS app)</strong>: stored locally on your device only; it is not sent to our servers.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h3 class="text-lg font-semibold text-ink-primary mb-2">3. Third-party services</h3>
+        <ul class="list-disc pl-6 space-y-2">
+          <li><strong>Open Food Facts</strong>: when you scan a barcode or search for a product, the barcode or search term is sent to Open Food Facts (an open food database) to retrieve product information. See their policy: <%= link_to "https://world.openfoodfacts.org", "https://world.openfoodfacts.org", class: "text-brand hover:underline", target: "_blank", rel: "noopener noreferrer" %></li>
+          <li><strong>Apple</strong>: if you use Sign in with Apple, authentication is handled by Apple under their privacy policy.</li>
+          <li>We use <strong>no advertising services or third-party analytics trackers</strong>.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h3 class="text-lg font-semibold text-ink-primary mb-2">4. Legal basis and purposes (GDPR)</h3>
+        <p>
+          We process your data on the basis of contract performance (providing the NutriFlow service) and, for health-related data (profile, activity), on the basis of your <strong>explicit consent</strong>, which you may withdraw at any time by deleting your account.
+        </p>
+      </section>
+
+      <section>
+        <h3 class="text-lg font-semibold text-ink-primary mb-2">5. Retention</h3>
+        <p>
+          Your data is kept for as long as your account is active. Upon account deletion, your data is removed from our systems within <strong>[PLACEHOLDER — e.g. 30 days]</strong>.
+        </p>
+      </section>
+
+      <section>
+        <h3 class="text-lg font-semibold text-ink-primary mb-2">6. Your rights</h3>
+        <p>
+          Under the GDPR you have the rights of access, rectification, erasure, portability, restriction, and objection. To exercise them, contact: <strong>[PLACEHOLDER — contact email]</strong>. You may also lodge a complaint with your supervisory authority (in France: CNIL, <%= link_to "cnil.fr", "https://www.cnil.fr", class: "text-brand hover:underline", target: "_blank", rel: "noopener noreferrer" %>).
+        </p>
+      </section>
+
+      <section>
+        <h3 class="text-lg font-semibold text-ink-primary mb-2">7. Security</h3>
+        <p>
+          Passwords are encrypted, all traffic to our servers uses HTTPS, and data access is limited to what the service requires.
+        </p>
+      </section>
+
+      <section>
+        <h3 class="text-lg font-semibold text-ink-primary mb-2">8. Children</h3>
+        <p>
+          NutriFlow is not intended for anyone under 15. We do not knowingly collect data from minors.
+        </p>
+      </section>
+
+      <section>
+        <h3 class="text-lg font-semibold text-ink-primary mb-2">9. Changes</h3>
+        <p>
+          Any changes to this policy will be posted on this page with an updated date.
+        </p>
+      </section>
+    </div>
+  </article>
+</main>
+
+<footer class="bg-surface-base py-8 border-t border-surface-border/50">
+  <div class="max-w-4xl mx-auto px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-ink-subtle">
+    <%= link_to root_path, class: "hover:text-ink-muted transition-colors" do %>
+      ← NutriFlow
+    <% end %>
+    <p>© <%= Date.current.year %> NutriFlow</p>
+  </div>
+</footer>
