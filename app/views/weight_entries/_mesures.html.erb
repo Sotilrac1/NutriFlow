@@ -1,80 +1,55 @@
 <%# ── KPI cards ── %>
 <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
 
-  <div class="bg-surface-raised border border-surface-border/40 rounded-2xl px-5 py-4">
-    <p class="text-xs font-medium text-ink-subtle uppercase tracking-wider mb-1 flex items-center gap-1">
-      <%= t("views.weight_entries.measurements.stats.waist") %>
-      <i class="fas fa-circle-info normal-case text-ink-subtle/60 hover:text-ink-primary transition-colors cursor-default"
-         data-tooltip="<%= t("views.weight_entries.measurements.stats.waist_info") %>"></i>
-    </p>
-    <% if @latest_waist %>
-      <p class="text-2xl font-bold text-ink-primary">
-        <%= @latest_waist %><span class="text-sm font-normal text-ink-subtle ml-1">cm</span>
-      </p>
-    <% else %>
-      <p class="text-2xl font-bold text-ink-subtle">—</p>
-    <% end %>
-  </div>
+  <% measurement_label = ->(text_key, info_key) do
+       tag.span(class: "inline-flex items-center gap-1") do
+         safe_join([
+           t(text_key),
+           tag.i("", class: "fas fa-circle-info normal-case text-ink-subtle/60 hover:text-ink-primary transition-colors cursor-default",
+                 data: { tooltip: t(info_key) })
+         ])
+       end
+     end %>
 
-  <div class="bg-surface-raised border border-surface-border/40 rounded-2xl px-5 py-4">
-    <p class="text-xs font-medium text-ink-subtle uppercase tracking-wider mb-1 flex items-center gap-1">
-      <%= t("views.weight_entries.measurements.stats.waist_hip_ratio") %>
-      <i class="fas fa-circle-info normal-case text-ink-subtle/60 hover:text-ink-primary transition-colors cursor-default"
-         data-tooltip="<%= t("views.weight_entries.measurements.stats.waist_hip_ratio_info") %>"></i>
-    </p>
-    <% if @latest_waist_hip %>
-      <p class="text-2xl font-bold text-ink-primary"><%= @latest_waist_hip %></p>
-    <% else %>
-      <p class="text-2xl font-bold text-ink-subtle">—</p>
-    <% end %>
-  </div>
+  <%= render Ui::StatCardComponent.new(
+        label: measurement_label.call("views.weight_entries.measurements.stats.waist", "views.weight_entries.measurements.stats.waist_info"),
+        value: @latest_waist || "—",
+        unit: (@latest_waist ? "cm" : nil),
+        value_color: (@latest_waist ? "text-ink-primary" : "text-ink-subtle")) %>
 
-  <div class="bg-surface-raised border border-surface-border/40 rounded-2xl px-5 py-4">
-    <p class="text-xs font-medium text-ink-subtle uppercase tracking-wider mb-1 flex items-center gap-1">
-      <%= t("views.weight_entries.measurements.stats.waist_height_ratio") %>
-      <i class="fas fa-circle-info normal-case text-ink-subtle/60 hover:text-ink-primary transition-colors cursor-default"
-         data-tooltip="<%= t("views.weight_entries.measurements.stats.waist_height_ratio_info") %>"></i>
-    </p>
-    <% if @latest_waist_height %>
-      <p class="text-2xl font-bold text-ink-primary"><%= @latest_waist_height %></p>
-    <% else %>
-      <p class="text-2xl font-bold text-ink-subtle">—</p>
-    <% end %>
-  </div>
+  <%= render Ui::StatCardComponent.new(
+        label: measurement_label.call("views.weight_entries.measurements.stats.waist_hip_ratio", "views.weight_entries.measurements.stats.waist_hip_ratio_info"),
+        value: @latest_waist_hip || "—",
+        value_color: (@latest_waist_hip ? "text-ink-primary" : "text-ink-subtle")) %>
 
-  <div class="bg-surface-raised border border-surface-border/40 rounded-2xl px-5 py-4">
-    <p class="text-xs font-medium text-ink-subtle uppercase tracking-wider mb-1 flex items-center gap-1">
-      <%= t("views.weight_entries.measurements.stats.body_fat") %>
-      <i class="fas fa-circle-info normal-case text-ink-subtle/60 hover:text-ink-primary transition-colors cursor-default"
-         data-tooltip="<%= t("views.weight_entries.measurements.stats.body_fat_info") %>"></i>
-    </p>
-    <% if @latest_body_fat %>
-      <p class="text-2xl font-bold text-ink-primary">
-        <%= @latest_body_fat %><span class="text-sm font-normal text-ink-subtle ml-1">%</span>
-      </p>
-    <% else %>
-      <p class="text-2xl font-bold text-ink-subtle">—</p>
-    <% end %>
-  </div>
+  <%= render Ui::StatCardComponent.new(
+        label: measurement_label.call("views.weight_entries.measurements.stats.waist_height_ratio", "views.weight_entries.measurements.stats.waist_height_ratio_info"),
+        value: @latest_waist_height || "—",
+        value_color: (@latest_waist_height ? "text-ink-primary" : "text-ink-subtle")) %>
+
+  <%= render Ui::StatCardComponent.new(
+        label: measurement_label.call("views.weight_entries.measurements.stats.body_fat", "views.weight_entries.measurements.stats.body_fat_info"),
+        value: @latest_body_fat || "—",
+        unit: (@latest_body_fat ? "%" : nil),
+        value_color: (@latest_body_fat ? "text-ink-primary" : "text-ink-subtle")) %>
 
 </div>
 
 <%# ── Graphique ── %>
-<div class="bg-surface-raised border border-surface-border/40 rounded-2xl p-6">
-  <div class="flex items-center justify-between mb-4">
-    <h2 class="text-sm font-semibold text-ink-primary flex items-center gap-2">
-      <i class="fas fa-ruler text-brand text-sm"></i>
-      <%= t("views.weight_entries.measurements.chart.title") %>
-    </h2>
-    <div class="flex items-center gap-1.5">
-      <% [30, 90].each do |p| %>
-        <%= link_to weight_entries_path(tab: "mesures", measurement: @measurement_type, period: p),
-              class: "px-3 py-1 rounded-full text-xs font-medium border transition-colors #{@period == p ? 'bg-brand/20 text-brand border-brand/50' : 'text-ink-subtle border-surface-border/50 hover:border-brand/30 hover:text-ink-muted'}" do %>
-          <%= t("views.weight_entries.chart.period_label", days: p) %>
+<%= render Ui::PanelComponent.new do %>
+  <%= render Ui::SectionHeaderComponent.new(icon: "fa-ruler",
+        title: t("views.weight_entries.measurements.chart.title"), size: :sm, class: "mb-4") do |c| %>
+    <% c.with_actions do %>
+      <div class="flex items-center gap-1.5">
+        <% MeasurementsTabLoadable::VALID_PERIODS.each do |p| %>
+          <%= link_to weight_entries_path(tab: "mesures", measurement: @measurement_type, period: p),
+                class: "px-3 py-1 rounded-full text-xs font-medium border transition-colors #{@period == p ? 'bg-brand/20 text-brand border-brand/50' : 'text-ink-subtle border-surface-border/50 hover:border-brand/30 hover:text-ink-muted'}" do %>
+            <%= p >= 365 ? t("views.weight_entries.chart.period_label_year") : t("views.weight_entries.chart.period_label", days: p) %>
+          <% end %>
         <% end %>
-      <% end %>
-    </div>
-  </div>
+      </div>
+    <% end %>
+  <% end %>
 
   <div class="flex flex-wrap items-center gap-1.5 mb-4">
     <% BodyMeasurement::MEASUREMENT_FIELDS.each do |field| %>
@@ -93,18 +68,18 @@
       </canvas>
     </div>
   <% else %>
-    <div class="flex flex-col items-center justify-center h-48 border border-dashed border-surface-border/50 rounded-xl">
-      <i class="fas fa-ruler text-2xl text-ink-subtle mb-2"></i>
-      <p class="text-sm text-ink-subtle"><%= t("views.weight_entries.measurements.chart.not_enough_data") %></p>
-    </div>
+    <%= render Ui::ChartPlaceholderComponent.new(
+          icon: "fa-ruler",
+          text: t("views.weight_entries.measurements.chart.not_enough_data"),
+          height: "h-48") %>
   <% end %>
-</div>
+<% end %>
 
 <%# ── Saisie + historique ── %>
 <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
 
   <%# Formulaire de saisie %>
-  <div class="bg-surface-raised border border-surface-border/40 rounded-2xl p-6">
+  <%= render Ui::PanelComponent.new do %>
     <h2 class="text-sm font-semibold text-ink-primary mb-4">
       <%= t("views.weight_entries.measurements.form.title") %>
     </h2>
@@ -165,7 +140,7 @@
               class: "hidden",
               accept: "image/jpeg,image/png",
               data: { "file-input-preview-target": "input", action: "change->file-input-preview#update" } %>
-          <i class="fas fa-xmark text-ink-subtle text-lg cursor-default"
+          <i class="fas fa-times text-ink-subtle text-lg cursor-default"
              data-file-input-preview-target="icon" data-tooltip=""></i>
         </div>
         <p class="text-xs text-ink-subtle/60 mt-1.5"><%= t("views.weight_entries.measurements.form.photo_hint") %></p>
@@ -173,11 +148,10 @@
 
       <%= f.submit t("views.weight_entries.measurements.form.submit"), class: "btn-primary w-full cursor-pointer" %>
     <% end %>
-  </div>
+  <% end %>
 
   <%# Historique %>
-  <div class="md:col-span-2 bg-surface-raised border border-surface-border/40 rounded-2xl p-6 flex flex-col"
-       data-controller="measurement-photo">
+  <%= render Ui::PanelComponent.new(class: "md:col-span-2 flex flex-col", data: { controller: "measurement-photo" }) do %>
     <h2 class="text-sm font-semibold text-ink-primary mb-4"><%= t("views.weight_entries.measurements.history.title") %></h2>
 
     <template data-measurement-photo-target="template">
@@ -212,7 +186,7 @@
           %>
             <div class="flex items-center gap-3">
               <% if thumbnail_url.present? %>
-                <%= image_tag thumbnail_url,
+                <%= image_tag thumbnail_url, loading: "lazy",
                       class: "w-10 h-10 rounded-lg object-cover border border-surface-border/40 group-hover:border-brand/50 transition-colors" %>
               <% end %>
               <p class="text-sm text-ink-muted"><%= l(entry.date, format: :long) %></p>
@@ -241,15 +215,9 @@
             <% end %>
             <div class="flex items-center gap-3">
               <div class="opacity-0 group-hover:opacity-100 transition-opacity">
-                <%= link_to body_measurement_path(entry),
-                    data: {
-                      turbo_method: :delete,
-                      action: "click->confirm#show",
-                      confirm_message: t("views.weight_entries.measurements.history.delete_confirm")
-                    },
-                    class: "inline-flex items-center justify-center w-7 h-7 rounded-lg text-ink-subtle hover:text-status-danger hover:bg-status-danger_dim/20 transition-colors" do %>
-                  <i class="fas fa-trash text-xs"></i>
-                <% end %>
+                <%= render Ui::IconButtonComponent.new(icon: :delete, variant: :delete, size: :sm,
+                      href: body_measurement_path(entry),
+                      confirm: t("views.weight_entries.measurements.history.delete_confirm")) %>
               </div>
             </div>
           </div>
@@ -261,11 +229,11 @@
         </div>
       <% end %>
     <% else %>
-      <div class="flex-1 min-h-0 flex flex-col items-center justify-center border border-dashed border-surface-border/50 rounded-xl">
-        <i class="fas fa-ruler text-2xl text-ink-subtle mb-2"></i>
-        <p class="text-sm text-ink-subtle"><%= t("views.weight_entries.measurements.history.empty") %></p>
-      </div>
+      <%= render Ui::ChartPlaceholderComponent.new(
+            icon: "fa-ruler",
+            text: t("views.weight_entries.measurements.history.empty"),
+            height: "flex-1 min-h-0") %>
     <% end %>
-  </div>
+  <% end %>
 
 </div>

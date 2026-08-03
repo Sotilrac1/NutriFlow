@@ -22,12 +22,27 @@ class ExercisesController < ApplicationController
     @equipments        = Exercise.equipments
     @favorited_ids     = current_user.exercise_favorites.pluck(:exercise_id).to_set
 
-    @pagy, @exercises = pagy(@exercises.with_attached_image.order(:name), items: 15)
+    # Preload the full Active Storage chain the card's .processed.url walks:
+    # attachment -> blob -> variant_records -> each variant's own attachment+blob.
+    # Stopping at :variant_records still left ~2 queries per exercise with an image.
+    @pagy, @exercises = pagy(
+      @exercises.includes(image_attachment: { blob: { variant_records: { image_attachment: :blob } } }).order(:name),
+      items: 15
+    )
   end
 
   def show
     @exercise     = Exercise.accessible_to(current_user).find(params[:id])
     @is_favorited = current_user.exercise_favorites.exists?(exercise: @exercise)
+
+    if @exercise.custom?
+      @exercise_session_count = WorkoutSet.joins(workout_session: :day)
+                                          .where(days: { user_id: current_user.id }, exercise_id: @exercise.id)
+                                          .distinct.count(:workout_session_id)
+      @exercise_program_count = ProgramExercise.joins(program_day: :workout_program)
+                                               .where(workout_programs: { user_id: current_user.id }, exercise_id: @exercise.id)
+                                               .distinct.count("workout_programs.id")
+    end
   end
 
   def search

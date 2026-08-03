@@ -37,13 +37,13 @@
         <%# Add shortcuts %>
         <div class="flex items-center gap-1.5">
           <%= link_to add_food_path,
-                class: "w-8 h-8 inline-flex items-center justify-center rounded-lg bg-brand/15 border border-brand/30 text-brand hover:bg-brand hover:text-zinc-900 transition-colors",
+                class: "w-8 h-8 inline-flex items-center justify-center rounded-lg bg-brand/15 border border-brand/30 text-brand hover:bg-brand hover:text-surface-base transition-colors",
                 data: { turbo_frame: "food_item_form" },
                 title: t("views.calendars.add_food") do %>
             <i class="fas fa-apple-whole text-xs" aria-hidden="true"></i>
           <% end %>
           <%= link_to add_recipe_path,
-                class: "w-8 h-8 inline-flex items-center justify-center rounded-lg bg-brand/15 border border-brand/30 text-brand hover:bg-brand hover:text-zinc-900 transition-colors",
+                class: "w-8 h-8 inline-flex items-center justify-center rounded-lg bg-brand/15 border border-brand/30 text-brand hover:bg-brand hover:text-surface-base transition-colors",
                 data: { turbo_frame: "food_item_form" },
                 title: t("views.calendars.add_recipe") do %>
             <i class="fas fa-utensils text-xs" aria-hidden="true"></i>
@@ -74,6 +74,9 @@
             <tr>
               <td class="align-top font-medium text-ink-primary">
                 <span class="break-words"><%= item.food_name %></span>
+                <% if item.detached? %>
+                  <%= render(Ui::BadgeComponent.new(t("shared.deleted_badge"), variant: :danger, size: :sm, class: "ml-1 align-middle")) %>
+                <% end %>
                 <% if logged_during_fasting?(item) %>
                   <i class="fas fa-hourglass-half text-ink-subtle/70 text-[10px] ml-1"
                      title="<%= t("views.calendars.fasting.meal_logged_during_fast") %>"></i>
@@ -81,10 +84,6 @@
                 <% if is_recipe?(item) %>
                   <div class="text-xs text-brand font-medium">
                     <%= t("views.components.day_food_group.recipe_label") %>
-                    <% if item.customized? %>
-                      <i class="fas fa-sliders text-ink-subtle/70 text-[10px] ml-1"
-                         title="<%= t("views.components.day_food_group.customized_tooltip") %>"></i>
-                    <% end %>
                   </div>
                 <% end %>
               </td>

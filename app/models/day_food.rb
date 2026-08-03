@@ -1,18 +1,29 @@
 class DayFood < ApplicationRecord
-  include HasFoodQuantity
+  include HasFoodSnapshot
   include ValidatesSharedOwner
 
   belongs_to :day
   belongs_to :day_food_group, optional: true
 
   validates :quantity, presence: true,
-            numericality: { greater_than_or_equal_to: 1, less_than_or_equal_to: HasFoodQuantity::MAX_QUANTITY }
+            numericality: { greater_than_or_equal_to: 1, less_than_or_equal_to: HasFoodSnapshot::MAX_QUANTITY }
   validate :day_food_group_belongs_to_user, if: -> { day_food_group_id.present? && day.present? }
   validates_shared_owner :food, owner: :day
 
-  # day_foods n'a pas de colonne `unit` (toujours en grammes) — HasFoodQuantity
-  # en a besoin pour son calcul générique de grams_equivalent.
+  after_save    :recompute_day_totals
+  after_destroy :recompute_day_totals
+
+  # day_foods n'a pas de colonne `unit` (toujours en grammes) — le concern en a
+  # besoin pour grams_equivalent.
   def unit = "g"
+
+  def display_quantity
+    "#{quantity} g"
+  end
+
+  # Log détaché : l'aliment a été supprimé de la banque (food_id nullifié), le
+  # snapshot + le nom figé subsistent.
+  def detached? = food_id.nil? && food_name.present?
 
   private
 
@@ -22,14 +33,9 @@ class DayFood < ApplicationRecord
     end
   end
 
-  public
-
-  # Pour la cohérence avec DayRecipe
-  def food_name
-    food.name
-  end
-
-  def display_quantity
-    "#{quantity} g"
+  # Keep the day's denormalized totals in sync. Defensive guard against updating
+  # an already-destroyed day (update_columns would raise on a destroyed record).
+  def recompute_day_totals
+    day.recompute_totals! unless day.destroyed?
   end
 end

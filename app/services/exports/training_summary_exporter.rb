@@ -1,0 +1,114 @@
+module Exports
+  # One sheet, three stacked tables: aggregate totals, recent PRs, top
+  # estimated 1RMs. The Brzycki 1RM formula and PR-recency logic mirror
+  # StatisticsController's private methods (duplicated, not shared — those
+  # are controller-private and out of scope to refactor here).
+  class TrainingSummaryExporter
+    def initialize(user:, period: nil)
+      @user = user
+      @period = period
+    end
+
+    def sheets
+      sets = scoped_sets
+
+      # Vertical "Indicateur / Valeur" layout: keeps this block narrow so it
+      # aligns cleanly under the PR/1RM tables in the same sheet instead of a
+      # wide single row whose columns dwarf everything below it.
+      summary_table = {
+        title: nil,
+        # A key/value summary: never prune its Valeur column, even when every KPI
+        # is 0 (empty account), or it would collapse to a lone label column.
+        prune: false,
+        headers: ["Indicateur", "Valeur"],
+        rows: [
+          ["Nb séances musculation", scoped_sessions.size],
+          ["Volume total musculation (kg)", sets.sum { |s| s.weight_kg.to_f * s.reps.to_i }.round],
+          ["Nb séances cardio", scoped_cardio_blocks.map(&:cardio_session_id).uniq.size],
+          ["Distance cardio totale (km)", total_cardio_distance],
+          ["Calories cardio totales", scoped_cardio_blocks.sum { |b| b.calories_burned.to_i }]
+        ]
+      }
+
+      prs_table = {
+        title: "PR récents",
+        headers: ["Date", "Exercice", "Poids (kg)", "Reps"],
+        rows: recent_prs(sets).map { |s| [s.workout_session.day.date, exercise_name(s), s.weight_kg, s.reps] }
+      }
+
+      one_rms_table = {
+        title: "Top 1RM estimés",
+        headers: ["Exercice", "1RM estimé (kg)"],
+        rows: top_estimated_one_rms(sets)
+      }
+
+      [{ name: "Résumé - Entraînement", tables: [summary_table, prs_table, one_rms_table] }]
+    end
+
+    private
+
+    def scoped_sessions
+      @scoped_sessions ||= begin
+        scope = WorkoutSession.joins(:day).where(days: { user_id: @user.id }).includes(:day, workout_sets: :exercise)
+        range = @period&.range
+        (range ? scope.where(days: { date: range }) : scope).to_a
+      end
+    end
+
+    def scoped_sets
+      @scoped_sets ||= scoped_sessions.flat_map(&:workout_sets)
+    end
+
+    def scoped_cardio_blocks
+      @scoped_cardio_blocks ||= begin
+        scope = CardioBlock.joins(cardio_session: :day).where(days: { user_id: @user.id }).includes(cardio_session: :day)
+        range = @period&.range
+        (range ? scope.where(days: { date: range }) : scope).to_a
+      end
+    end
+
+    def total_cardio_distance
+      running_machines = %w[treadmill outdoor_run]
+      scoped_cardio_blocks.sum do |b|
+        if b.distance_km.present?
+          b.distance_km.to_f
+        elsif running_machines.include?(b.machine) && b.speed_kmh.present?
+          b.speed_kmh.to_f * b.duration_minutes.to_f / 60.0
+        else
+          0
+        end
+      end.round(1)
+    end
+
+    def recent_prs(sets)
+      sets.select(&:is_pr).sort_by { |ws| ws.workout_session.day.date }.last(5).reverse
+    end
+
+    def top_estimated_one_rms(sets, top: 3)
+      best_by_exercise = {}
+      sets.each do |ws|
+        orm = estimated_one_rep_max(ws.weight_kg, ws.reps)
+        next if orm.nil?
+
+        # Clé stable [exercise_id, exercise_name] : deux exercices supprimés
+        # (exercise_id nil) ne doivent pas fusionner dans le classement.
+        key = [ws.exercise_id, ws.exercise_name]
+        current = best_by_exercise[key]
+        best_by_exercise[key] = { orm: orm, set: ws } if current.nil? || orm > current[:orm]
+      end
+
+      best_by_exercise.values.sort_by { |v| -v[:orm] }.first(top).map { |v| [exercise_name(v[:set]), v[:orm]] }
+    end
+
+    # Brzycki formula, valid for reps 1-10 only — same restriction as StatisticsController.
+    def estimated_one_rep_max(weight_kg, reps)
+      return nil unless weight_kg.present? && reps.present? && reps.between?(1, 10) && weight_kg.to_f > 0
+
+      (weight_kg.to_f * 36.0 / (37.0 - reps.to_f)).round(1)
+    end
+
+    def exercise_name(set)
+      set.exercise&.name_fr.presence || set.exercise&.name || set.exercise_name
+    end
+  end
+end

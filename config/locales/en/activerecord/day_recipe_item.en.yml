@@ -7,5 +7,6 @@ en:
     attributes:
       day_recipe_item:
         food: "Food"
+        food_id: "Food"
         quantity: "Quantity"
         unit: "Unit"

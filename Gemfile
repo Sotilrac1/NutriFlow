@@ -67,6 +67,7 @@ group :development do
   gem 'web-console'
   gem 'bullet'
   gem 'brakeman', require: false
+  gem "lookbook"
 end
 
 gem 'view_component'
@@ -85,6 +86,7 @@ gem "rack-attack"
 
 gem "faraday", "~> 2.14"
 gem "csv"
+gem "caxlsx"
 
 # API iOS
 gem "devise-jwt"

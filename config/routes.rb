@@ -1,6 +1,10 @@
 Rails.application.routes.draw do
   get "up" => "rails/health#show", as: :rails_health_check
 
+  if Rails.env.development?
+    mount Lookbook::Engine, at: "/lookbook"
+  end
+
   devise_for :users, controllers: {
     registrations:       'users/registrations',
     passwords:           'users/passwords',
@@ -140,7 +144,6 @@ Rails.application.routes.draw do
       post   :duplicate
       patch  :toggle_favorite
       patch  :toggle_pantry
-      delete :force_destroy
     end
   end
   resources :scans, only: [:new, :create] do
@@ -151,6 +154,9 @@ Rails.application.routes.draw do
     patch :reorder_calendar_sections
     delete :sign_out_other_sessions
     delete :reset_data
+  end
+  resources :exports, only: [:create, :show] do
+    member { get :download }
   end
   resources :day_food_groups, only: [:create, :edit, :update, :destroy]
   resources :food_labels, only: [:create, :edit, :update, :destroy]

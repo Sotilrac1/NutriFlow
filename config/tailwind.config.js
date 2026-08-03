@@ -6,7 +6,8 @@ module.exports = {
     './app/helpers/**/*.rb',
     './app/javascript/**/*.js',
     './app/views/**/*.{erb,haml,html,slim}',
-    './app/components/**/*.{rb,erb}'
+    './app/components/**/*.{rb,erb}',
+    './spec/components/previews/**/*.rb'
   ],
   theme: {
     extend: {
@@ -48,6 +49,16 @@ module.exports = {
           info:        '#3B82F6',
           info_dim:    '#1E3A5F',
         },
+        star: '#FBBF24',
+      },
+      borderRadius: {
+        control: '0.5rem',
+        card:    '0.75rem',
+        panel:   '1rem',
+      },
+      boxShadow: {
+        card:  '0 10px 15px -3px rgb(0 0 0 / 0.3), 0 4px 6px -4px rgb(0 0 0 / 0.3)',
+        modal: '0 25px 50px -12px rgb(0 0 0 / 0.5)',
       },
     },
   },

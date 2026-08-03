@@ -1,0 +1,11 @@
+fr:
+  activerecord:
+    models:
+      day_food:
+        one: "Aliment"
+        other: "Aliments"
+    attributes:
+      day_food:
+        food: "Aliment"
+        food_id: "Aliment"
+        quantity: "Quantité"

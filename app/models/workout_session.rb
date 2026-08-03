@@ -1,4 +1,6 @@
 class WorkoutSession < ApplicationRecord
+  include DurationEstimatable
+
   belongs_to :day
 
   # Must be declared before the `has_many :workout_sets, dependent: :destroy`
@@ -11,9 +13,12 @@ class WorkoutSession < ApplicationRecord
   has_many :workout_sets, -> { order(:position) }, dependent: :destroy, inverse_of: :workout_session
   has_many :exercises, through: :workout_sets
 
+  # On ne rejette qu'une NOUVELLE ligne vide (ni id ni exercice) : une série
+  # persistée dont l'exercice a été supprimé (id présent, exercise_id vide mais
+  # identité figée) doit rester éditable, pas être ignorée silencieusement.
   accepts_nested_attributes_for :workout_sets,
     allow_destroy: true,
-    reject_if: ->(attrs) { attrs[:exercise_id].blank? }
+    reject_if: ->(attrs) { attrs[:id].blank? && attrs[:exercise_id].blank? }
 
   MAX_SETS_PER_EXERCISE = 10
 
@@ -41,8 +46,10 @@ class WorkoutSession < ApplicationRecord
 
   DEFAULT_MET = 3.5
 
+  GroupedExercise = Struct.new(:exercise_id, :name, :body_part, :sets, keyword_init: true)
+
   # Formula: MET × weight_kg × hours  (Harris-Benedict / Compendium standard)
-  # When no explicit duration: estimate 3 min per set (work + rest), min 10 min
+  # When no explicit duration: estimate from logged reps + rest_seconds
   def estimated_calories(weight_kg = nil)
     return calories_burned if calories_burned.present?
 
@@ -51,10 +58,10 @@ class WorkoutSession < ApplicationRecord
     hours = if duration_minutes.present? && duration_minutes > 0
       duration_minutes / 60.0
     else
-      [workout_sets.size * 3, 10].max / 60.0
+      estimated_duration_minutes / 60.0
     end
 
-    (primary_body_part_met * rpe_multiplier * w * hours).round
+    (weighted_met * rpe_multiplier * w * hours).round
   end
 
   def total_volume
@@ -68,15 +75,10 @@ class WorkoutSession < ApplicationRecord
   end
 
   def grouped_sets
-    if new_record?
-      # In-memory: exercises were preloaded via set.exercise = pe.exercise in the controller,
-      # or need to be loaded by exercise_id (error re-render case from accepted nested attrs).
-      workout_sets.group_by do |s|
-        s.exercise || (s.exercise_id.present? ? Exercise.find_by(id: s.exercise_id) : nil)
-      end.reject { |exercise, _| exercise.nil? }
-    else
-      workout_sets.includes(:exercise).group_by(&:exercise)
-    end
+    workout_sets
+      .group_by { |s| [s.exercise_id, s.display_exercise_name] }
+      .reject { |(_id, name), _sets| name.blank? }
+      .map { |(exercise_id, name), sets| GroupedExercise.new(exercise_id: exercise_id, name: name, body_part: sets.first.display_body_part, sets: sets) }
   end
 
   private
@@ -99,22 +101,48 @@ class WorkoutSession < ApplicationRecord
 
   def max_sets_per_exercise
     active = workout_sets.reject(&:marked_for_destruction?)
-    too_many = active.group_by(&:exercise_id).values.any? { |sets| sets.size > MAX_SETS_PER_EXERCISE }
+    # Clé [exercise_id, exercise_name] : deux exercices supprimés distincts ont
+    # tous deux exercise_id nil et ne doivent pas fusionner (sinon leurs séries
+    # s'additionnent et bloquent l'enregistrement de la séance à tort).
+    too_many = active.group_by { |s| [s.exercise_id, s.exercise_name] }.values.any? { |sets| sets.size > MAX_SETS_PER_EXERCISE }
     errors.add(:base, I18n.t("activerecord.errors.models.workout_session.too_many_sets_per_exercise")) if too_many
   end
 
-  def primary_body_part_met
-    body_part = workout_sets.includes(:exercise).map { |s| s.exercise&.body_part }.compact.first
-    MET_BY_BODY_PART[body_part] || DEFAULT_MET
+  # Weighted average MET across every body part trained in the session, one
+  # set = one weight unit — replaces the old "MET of the first logged
+  # exercise" shortcut, which made the result depend on set entry order.
+  def weighted_met
+    sets_by_body_part = workout_sets.group_by(&:display_body_part)
+    return DEFAULT_MET if sets_by_body_part.empty?
+
+    total        = sets_by_body_part.sum { |_, sets| sets.size }
+    weighted_sum = sets_by_body_part.sum { |bp, sets| (MET_BY_BODY_PART[bp] || DEFAULT_MET) * sets.size }
+    weighted_sum / total.to_f
   end
 
-  # Scale MET based on RPE (Rate of Perceived Exertion)
-  def rpe_multiplier
-    case average_rpe
-    when 6..7  then 1.00
-    when 8..9  then 1.15
-    when 10    then 1.30
-    else 1.00
+  # rest_seconds is stored once per exercise (on its first set); apply it to
+  # every set of that exercise so rest scales with set count — consistent with
+  # ProgramDay#duration_estimate_pairs and physically closer to real rest time.
+  def duration_estimate_pairs
+    # Clé = identité stable [exercise_id, exercise_name] : deux exercices
+    # supprimés distincts ont tous deux exercise_id nil et ne doivent pas
+    # fusionner (sinon le repos de l'un contaminerait l'autre → durée faussée).
+    rows = workout_sets.pluck(:exercise_id, :exercise_name, :reps, :rest_seconds)
+    rest_by_exercise = rows.each_with_object({}) do |(exercise_id, exercise_name, _reps, rest), acc|
+      key = [exercise_id, exercise_name]
+      acc[key] = rest if rest.present? && !acc.key?(key)
     end
+    rows.map { |exercise_id, exercise_name, reps, _rest| [reps, rest_by_exercise[[exercise_id, exercise_name]]] }
+  end
+
+  # Scale MET by perceived effort (RPE). Linear from 1.00 at RPE 6 (or below)
+  # to 1.30 at RPE 10 — keeps the original anchor points (6→1.00, 8→1.15,
+  # 10→1.30) but fills the gaps so every average RPE has a distinct,
+  # proportional impact (the old tiered version left holes at 7.x/9.x that
+  # silently fell back to 1.00).
+  RPE_MULTIPLIER_PER_POINT = 0.075 # (1.30 - 1.00) / (10 - 6)
+
+  def rpe_multiplier
+    1.0 + (average_rpe.clamp(6.0, 10.0) - 6.0) * RPE_MULTIPLIER_PER_POINT
   end
 end

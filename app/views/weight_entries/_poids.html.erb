@@ -2,60 +2,58 @@
 <div class="grid grid-cols-2 lg:grid-cols-5 gap-3">
 
   <%# Poids actuel %>
-  <div class="bg-surface-raised border border-surface-border/40 rounded-2xl px-5 py-4">
-    <p class="text-xs font-medium text-ink-subtle uppercase tracking-wider mb-1">
-      <%= t("views.weight_entries.stats.current") %>
-    </p>
-    <% if @current_weight %>
-      <p class="text-2xl font-bold text-ink-primary">
-        <%= @current_weight %><span class="text-sm font-normal text-ink-subtle ml-1">kg</span>
-      </p>
-      <% if @trend_weekly %>
-        <%
-          good   = @positive_is_good
-          toward = @trend_weekly > 0.05 ? :up : @trend_weekly < -0.05 ? :down : :flat
-          trend_color = toward == :flat ? "text-ink-subtle" :
-                        (toward == :up && good || toward == :down && !good) ? "text-status-success" : "text-status-danger"
-          trend_icon  = toward == :up ? "fa-arrow-trend-up" : toward == :down ? "fa-arrow-trend-down" : "fa-minus"
-        %>
+  <%= render Ui::StatCardComponent.new(
+        label: t("views.weight_entries.stats.current"),
+        value: @current_weight || "—",
+        unit: (@current_weight ? "kg" : nil),
+        value_color: (@current_weight ? "text-ink-primary" : "text-ink-subtle")) do |c| %>
+    <% if @current_weight && @trend_weekly %>
+      <%
+        good   = @positive_is_good
+        toward = @trend_weekly > 0.05 ? :up : @trend_weekly < -0.05 ? :down : :flat
+        trend_color = toward == :flat ? "text-ink-subtle" :
+                      (toward == :up && good || toward == :down && !good) ? "text-status-success" : "text-status-danger"
+        trend_icon  = toward == :up ? "fa-arrow-trend-up" : toward == :down ? "fa-arrow-trend-down" : "fa-minus"
+      %>
+      <% c.with_sub do %>
         <p class="text-xs <%= trend_color %> mt-1.5 flex items-center gap-1">
           <i class="fas <%= trend_icon %> text-[9px]"></i>
           <%= @trend_weekly > 0 ? "+#{@trend_weekly}" : @trend_weekly %> <%= t("views.weight_entries.stats.trend_unit") %>
         </p>
       <% end %>
-    <% else %>
-      <p class="text-2xl font-bold text-ink-subtle">—</p>
     <% end %>
-  </div>
+  <% end %>
 
   <%# IMC %>
-  <div class="bg-surface-raised border border-surface-border/40 rounded-2xl px-5 py-4">
-    <p class="text-xs font-medium text-ink-subtle uppercase tracking-wider mb-1">
-      <%= t("views.weight_entries.stats.bmi_label") %>
-    </p>
+  <% if @bmi %>
+    <%
+      bmi_color = case @bmi_category
+                  when :underweight then "text-status-info"
+                  when :normal      then "text-status-success"
+                  when :overweight  then "text-status-warning"
+                  else                   "text-status-danger"
+                  end
+    %>
+  <% end %>
+  <%= render Ui::StatCardComponent.new(
+        label: t("views.weight_entries.stats.bmi_label"),
+        value: @bmi || "—",
+        value_color: (@bmi ? bmi_color : "text-ink-subtle")) do |c| %>
     <% if @bmi %>
-      <%
-        bmi_color = case @bmi_category
-                    when :underweight then "text-status-info"
-                    when :normal      then "text-status-success"
-                    when :overweight  then "text-status-warning"
-                    else                   "text-status-danger"
-                    end
-      %>
-      <p class="text-2xl font-bold <%= bmi_color %>"><%= @bmi %></p>
-      <p class="text-[10px] <%= bmi_color %> mt-1.5 font-medium">
-        <%= t("views.weight_entries.stats.bmi_category.#{@bmi_category}") %>
-      </p>
+      <% c.with_sub do %>
+        <p class="text-[10px] <%= bmi_color %> mt-1.5 font-medium">
+          <%= t("views.weight_entries.stats.bmi_category.#{@bmi_category}") %>
+        </p>
+      <% end %>
     <% elsif @current_weight %>
-      <p class="text-2xl font-bold text-ink-subtle">—</p>
-      <p class="text-[10px] text-ink-subtle mt-1.5"><%= t("views.weight_entries.stats.no_height") %></p>
-    <% else %>
-      <p class="text-2xl font-bold text-ink-subtle">—</p>
+      <% c.with_sub do %>
+        <p class="text-[10px] text-ink-subtle mt-1.5"><%= t("views.weight_entries.stats.no_height") %></p>
+      <% end %>
     <% end %>
-  </div>
+  <% end %>
 
   <%# Delta 30j %>
-  <div class="bg-surface-raised border border-surface-border/40 rounded-2xl px-5 py-4">
+  <%= render Ui::PanelComponent.new(padding: "px-5 py-4") do %>
     <p class="text-xs font-medium text-ink-subtle uppercase tracking-wider mb-1">
       <%= t("views.weight_entries.stats.delta_30d") %>
     </p>
@@ -73,10 +71,10 @@
       <p class="text-2xl font-bold text-ink-subtle">—</p>
       <p class="text-xs text-ink-subtle mt-1"><%= t("views.weight_entries.stats.not_enough_data") %></p>
     <% end %>
-  </div>
+  <% end %>
 
   <%# Delta 90j %>
-  <div class="bg-surface-raised border border-surface-border/40 rounded-2xl px-5 py-4">
+  <%= render Ui::PanelComponent.new(padding: "px-5 py-4") do %>
     <p class="text-xs font-medium text-ink-subtle uppercase tracking-wider mb-1">
       <%= t("views.weight_entries.stats.delta_90d") %>
     </p>
@@ -94,48 +92,47 @@
       <p class="text-2xl font-bold text-ink-subtle">—</p>
       <p class="text-xs text-ink-subtle mt-1"><%= t("views.weight_entries.stats.not_enough_data") %></p>
     <% end %>
-  </div>
+  <% end %>
 
   <%# Objectif %>
-  <div class="bg-surface-raised border border-surface-border/40 rounded-2xl px-5 py-4">
-    <p class="text-xs font-medium text-ink-subtle uppercase tracking-wider mb-1">
-      <%= t("views.weight_entries.stats.goal") %>
-    </p>
-    <p class="text-2xl font-bold text-ink-primary">
-      <%= @profile.goal_weight %><span class="text-sm font-normal text-ink-subtle ml-1">kg</span>
-    </p>
+  <%= render Ui::StatCardComponent.new(
+        label: t("views.weight_entries.stats.goal"),
+        value: @profile.goal_weight,
+        unit: "kg",
+        value_color: "text-ink-primary") do |c| %>
     <% if @goal_delta %>
       <% remaining_color = @goal_delta.abs < 1 ? "text-status-success" : "text-ink-subtle" %>
-      <p class="text-xs <%= remaining_color %> mt-1">
-        <% if @goal_delta > 0 %>
-          <%= t("views.weight_entries.stats.to_lose", kg: @goal_delta) %>
-        <% elsif @goal_delta < 0 %>
-          <%= t("views.weight_entries.stats.to_gain", kg: @goal_delta.abs) %>
-        <% else %>
-          <%= t("views.weight_entries.stats.goal_reached") %>
-        <% end %>
-      </p>
+      <% c.with_sub do %>
+        <p class="text-xs <%= remaining_color %> mt-1">
+          <% if @goal_delta > 0 %>
+            <%= t("views.weight_entries.stats.to_lose", kg: @goal_delta) %>
+          <% elsif @goal_delta < 0 %>
+            <%= t("views.weight_entries.stats.to_gain", kg: @goal_delta.abs) %>
+          <% else %>
+            <%= t("views.weight_entries.stats.goal_reached") %>
+          <% end %>
+        </p>
+      <% end %>
     <% end %>
-  </div>
+  <% end %>
 
 </div>
 
 <%# ── Graphique ── %>
-<div class="bg-surface-raised border border-surface-border/40 rounded-2xl p-6">
-  <div class="flex items-center justify-between mb-4">
-    <h2 class="text-sm font-semibold text-ink-primary flex items-center gap-2">
-      <i class="fas fa-chart-line text-brand text-sm"></i>
-      <%= t("views.weight_entries.chart.title") %>
-    </h2>
-    <div class="flex items-center gap-1.5">
-      <% [30, 90].each do |p| %>
-        <%= link_to weight_entries_path(tab: "poids", period: p),
-              class: "px-3 py-1 rounded-full text-xs font-medium border transition-colors #{@period == p ? 'bg-brand/20 text-brand border-brand/50' : 'text-ink-subtle border-surface-border/50 hover:border-brand/30 hover:text-ink-muted'}" do %>
-          <%= t("views.weight_entries.chart.period_label", days: p) %>
+<%= render Ui::PanelComponent.new do %>
+  <%= render Ui::SectionHeaderComponent.new(icon: "fa-chart-line",
+        title: t("views.weight_entries.chart.title"), size: :sm, class: "mb-4") do |c| %>
+    <% c.with_actions do %>
+      <div class="flex items-center gap-1.5">
+        <% MeasurementsTabLoadable::VALID_PERIODS.each do |p| %>
+          <%= link_to weight_entries_path(tab: "poids", period: p),
+                class: "px-3 py-1 rounded-full text-xs font-medium border transition-colors #{@period == p ? 'bg-brand/20 text-brand border-brand/50' : 'text-ink-subtle border-surface-border/50 hover:border-brand/30 hover:text-ink-muted'}" do %>
+            <%= p >= 365 ? t("views.weight_entries.chart.period_label_year") : t("views.weight_entries.chart.period_label", days: p) %>
+          <% end %>
         <% end %>
-      <% end %>
-    </div>
-  </div>
+      </div>
+    <% end %>
+  <% end %>
 
   <% if @chart_data.size >= 2 %>
     <div class="relative h-56">
@@ -154,18 +151,18 @@
       </p>
     <% end %>
   <% else %>
-    <div class="flex flex-col items-center justify-center h-48 border border-dashed border-surface-border/50 rounded-xl">
-      <i class="fas fa-chart-line text-2xl text-ink-subtle mb-2"></i>
-      <p class="text-sm text-ink-subtle"><%= t("views.weight_entries.chart.not_enough_data") %></p>
-    </div>
+    <%= render Ui::ChartPlaceholderComponent.new(
+          icon: "fa-chart-line",
+          text: t("views.weight_entries.chart.not_enough_data"),
+          height: "h-48") %>
   <% end %>
-</div>
+<% end %>
 
 <%# ── Saisie + historique ── %>
 <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
 
   <%# Formulaire de saisie %>
-  <div class="bg-surface-raised border border-surface-border/40 rounded-2xl p-6">
+  <%= render Ui::PanelComponent.new do %>
     <h2 class="text-sm font-semibold text-ink-primary mb-4">
       <%= t("views.weight_entries.form.title") %>
     </h2>
@@ -218,10 +215,10 @@
 
       <%= f.submit t("views.weight_entries.form.submit"), class: "btn-primary w-full cursor-pointer" %>
     <% end %>
-  </div>
+  <% end %>
 
   <%# Historique %>
-  <div class="md:col-span-2 bg-surface-raised border border-surface-border/40 rounded-2xl p-6 flex flex-col">
+  <%= render Ui::PanelComponent.new(class: "md:col-span-2 flex flex-col") do %>
     <h2 class="text-sm font-semibold text-ink-primary mb-4">
       <%= t("views.weight_entries.history.title") %>
     </h2>
@@ -250,15 +247,9 @@
                 <% end %>
               <% end %>
               <div class="opacity-0 group-hover:opacity-100 transition-opacity">
-                <%= link_to weight_entry_path(entry),
-                    data: {
-                      turbo_method: :delete,
-                      action: "click->confirm#show",
-                      confirm_message: t("views.weight_entries.history.delete_confirm")
-                    },
-                    class: "inline-flex items-center justify-center w-7 h-7 rounded-lg text-ink-subtle hover:text-status-danger hover:bg-status-danger_dim/20 transition-colors" do %>
-                  <i class="fas fa-trash text-xs"></i>
-                <% end %>
+                <%= render Ui::IconButtonComponent.new(icon: :delete, variant: :delete, size: :sm,
+                      href: weight_entry_path(entry),
+                      confirm: t("views.weight_entries.history.delete_confirm")) %>
               </div>
             </div>
           </div>
@@ -270,11 +261,11 @@
         </div>
       <% end %>
     <% else %>
-      <div class="flex-1 min-h-0 flex flex-col items-center justify-center border border-dashed border-surface-border/50 rounded-xl">
-        <i class="fas fa-weight-scale text-2xl text-ink-subtle mb-2"></i>
-        <p class="text-sm text-ink-subtle"><%= t("views.weight_entries.history.empty") %></p>
-      </div>
+      <%= render Ui::ChartPlaceholderComponent.new(
+            icon: "fa-weight-scale",
+            text: t("views.weight_entries.history.empty"),
+            height: "flex-1 min-h-0") %>
     <% end %>
-  </div>
+  <% end %>
 
 </div>

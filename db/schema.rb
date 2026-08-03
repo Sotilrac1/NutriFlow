@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_07_21_141016) do
+ActiveRecord::Schema[8.0].define(version: 2026_07_30_131239) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -100,6 +100,20 @@ ActiveRecord::Schema[8.0].define(version: 2026_07_21_141016) do
     t.index ["name"], name: "index_ciqual_foods_on_name"
   end
 
+  create_table "data_exports", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.string "status", default: "pending", null: false
+    t.string "categories", default: [], null: false, array: true
+    t.string "period_kind", default: "all", null: false
+    t.date "date_from"
+    t.date "date_to"
+    t.text "error_message"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["user_id"], name: "index_data_exports_on_one_in_progress_per_user", unique: true, where: "((status)::text = ANY ((ARRAY['pending'::character varying, 'processing'::character varying])::text[]))"
+    t.index ["user_id"], name: "index_data_exports_on_user_id"
+  end
+
   create_table "day_food_groups", force: :cascade do |t|
     t.string "name", null: false
     t.bigint "user_id", null: false
@@ -110,11 +124,13 @@ ActiveRecord::Schema[8.0].define(version: 2026_07_21_141016) do
 
   create_table "day_foods", force: :cascade do |t|
     t.bigint "day_id", null: false
-    t.bigint "food_id", null: false
+    t.bigint "food_id"
     t.decimal "quantity", default: "1.0", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.bigint "day_food_group_id"
+    t.string "food_name"
+    t.jsonb "food_snapshot"
     t.index ["day_food_group_id"], name: "index_day_foods_on_day_food_group_id"
     t.index ["day_id", "food_id"], name: "index_day_foods_on_day_id_and_food_id"
     t.index ["day_id"], name: "index_day_foods_on_day_id"
@@ -123,24 +139,24 @@ ActiveRecord::Schema[8.0].define(version: 2026_07_21_141016) do
 
   create_table "day_recipe_items", force: :cascade do |t|
     t.bigint "day_recipe_id", null: false
-    t.bigint "food_id", null: false
+    t.bigint "food_id"
     t.decimal "quantity", null: false
     t.string "unit", default: "g", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "food_name"
+    t.jsonb "food_snapshot"
     t.index ["day_recipe_id"], name: "index_day_recipe_items_on_day_recipe_id"
     t.index ["food_id"], name: "index_day_recipe_items_on_food_id"
   end
 
   create_table "day_recipes", force: :cascade do |t|
     t.bigint "day_id", null: false
-    t.bigint "recipe_id", null: false
+    t.bigint "recipe_id"
     t.bigint "day_food_group_id"
-    t.decimal "quantity", precision: 8, scale: 2
-    t.boolean "use_recipe_quantity", default: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.boolean "customized", default: false, null: false
+    t.string "recipe_name"
     t.index ["day_food_group_id"], name: "index_day_recipes_on_day_food_group_id"
     t.index ["day_id"], name: "index_day_recipes_on_day_id"
     t.index ["recipe_id"], name: "index_day_recipes_on_recipe_id"
@@ -157,8 +173,12 @@ ActiveRecord::Schema[8.0].define(version: 2026_07_21_141016) do
     t.integer "sleep_quality"
     t.integer "water_ml", default: 0, null: false
     t.integer "steps"
-    t.index ["date", "user_id"], name: "index_days_on_date_and_user_id", unique: true
-    t.index ["user_id"], name: "index_days_on_user_id"
+    t.decimal "cached_calories", precision: 14, scale: 2, default: "0.0", null: false
+    t.decimal "cached_proteins", precision: 14, scale: 2, default: "0.0", null: false
+    t.decimal "cached_carbs", precision: 14, scale: 2, default: "0.0", null: false
+    t.decimal "cached_fats", precision: 14, scale: 2, default: "0.0", null: false
+    t.decimal "cached_sugars", precision: 14, scale: 2, default: "0.0", null: false
+    t.index ["user_id", "date"], name: "index_days_on_user_id_and_date", unique: true
   end
 
   create_table "exercise_favorites", force: :cascade do |t|
@@ -294,7 +314,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_07_21_141016) do
     t.integer "default_daily_steps", null: false
     t.decimal "goal_rate_kg_per_week", precision: 4, scale: 2, default: "0.0", null: false
     t.date "date_of_birth"
-    t.index ["user_id"], name: "index_profiles_on_user_id"
+    t.index ["user_id"], name: "index_profiles_on_user_id", unique: true
   end
 
   create_table "program_days", force: :cascade do |t|
@@ -367,7 +387,16 @@ ActiveRecord::Schema[8.0].define(version: 2026_07_21_141016) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.boolean "favorite", default: false, null: false
-    t.index ["name", "user_id"], name: "index_recipes_on_name_and_user_id"
+    t.decimal "total_calories", precision: 14, scale: 2, default: "0.0", null: false
+    t.decimal "total_proteins", precision: 14, scale: 2, default: "0.0", null: false
+    t.decimal "total_carbs", precision: 14, scale: 2, default: "0.0", null: false
+    t.decimal "total_fats", precision: 14, scale: 2, default: "0.0", null: false
+    t.decimal "total_sugars", precision: 14, scale: 2, default: "0.0", null: false
+    t.decimal "total_weight", precision: 14, scale: 2, default: "0.0", null: false
+    t.decimal "total_fiber", precision: 14, scale: 2, default: "0.0", null: false
+    t.decimal "total_saturated_fat", precision: 14, scale: 2, default: "0.0", null: false
+    t.decimal "total_salt", precision: 14, scale: 2, default: "0.0", null: false
+    t.index "user_id, lower((name)::text)", name: "index_recipes_on_user_id_and_lower_name", unique: true
     t.index ["user_id"], name: "index_recipes_on_user_id"
   end
 
@@ -466,7 +495,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_07_21_141016) do
 
   create_table "workout_sets", force: :cascade do |t|
     t.bigint "workout_session_id", null: false
-    t.bigint "exercise_id", null: false
+    t.bigint "exercise_id"
     t.decimal "weight_kg", precision: 6, scale: 2
     t.integer "reps"
     t.integer "position", default: 0, null: false
@@ -477,6 +506,8 @@ ActiveRecord::Schema[8.0].define(version: 2026_07_21_141016) do
     t.boolean "is_pr", default: false, null: false
     t.integer "rpe"
     t.string "set_types", default: ["working"], null: false, array: true
+    t.string "exercise_name"
+    t.string "body_part"
     t.index ["exercise_id"], name: "index_workout_sets_on_exercise_id"
     t.index ["workout_session_id", "position"], name: "index_workout_sets_on_workout_session_id_and_position"
     t.index ["workout_session_id"], name: "index_workout_sets_on_workout_session_id"
@@ -487,15 +518,16 @@ ActiveRecord::Schema[8.0].define(version: 2026_07_21_141016) do
   add_foreign_key "body_measurements", "users"
   add_foreign_key "cardio_blocks", "cardio_sessions"
   add_foreign_key "cardio_sessions", "days"
+  add_foreign_key "data_exports", "users"
   add_foreign_key "day_food_groups", "users"
   add_foreign_key "day_foods", "day_food_groups"
   add_foreign_key "day_foods", "days"
-  add_foreign_key "day_foods", "foods"
+  add_foreign_key "day_foods", "foods", on_delete: :nullify
   add_foreign_key "day_recipe_items", "day_recipes"
-  add_foreign_key "day_recipe_items", "foods"
+  add_foreign_key "day_recipe_items", "foods", on_delete: :nullify
   add_foreign_key "day_recipes", "day_food_groups"
   add_foreign_key "day_recipes", "days"
-  add_foreign_key "day_recipes", "recipes"
+  add_foreign_key "day_recipes", "recipes", on_delete: :nullify
   add_foreign_key "days", "users"
   add_foreign_key "exercise_favorites", "exercises"
   add_foreign_key "exercise_favorites", "users"
@@ -522,6 +554,6 @@ ActiveRecord::Schema[8.0].define(version: 2026_07_21_141016) do
   add_foreign_key "weight_entries", "users"
   add_foreign_key "workout_programs", "users"
   add_foreign_key "workout_sessions", "days"
-  add_foreign_key "workout_sets", "exercises"
+  add_foreign_key "workout_sets", "exercises", on_delete: :nullify
   add_foreign_key "workout_sets", "workout_sessions"
 end

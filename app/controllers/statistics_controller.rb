@@ -26,6 +26,17 @@ class StatisticsController < ApplicationController
 
     @from = @period.days.ago.to_date
 
+    # Conditional GET: skip the heavy per-tab aggregation (304) when the tab's
+    # underlying data hasn't changed since the client's last view. The nutrition
+    # stamp is reliable because every logged food/recipe change bumps the day's
+    # updated_at (denormalization recompute, phase 2b); snapshot logs mean a later
+    # Food/Recipe edit legitimately does NOT invalidate past days.
+    # The data stamp is folded INTO the etag (not only Last-Modified) so the etag
+    # itself changes on any data change — a 304 is then correct even for a client
+    # that sends only If-None-Match.
+    return unless stale?(etag: [current_user.id, @tab, @period, statistics_stamp],
+                         public: false)
+
     case @tab
     when "nutrition"    then load_nutrition_stats
     when "training"     then load_training_stats
@@ -38,6 +49,32 @@ class StatisticsController < ApplicationController
 
   private
 
+  # Cache stamp for the current tab: [MAX(updated_at), COUNT] over every table the
+  # tab reads (children included). MAX catches edits; COUNT catches additions AND
+  # deletions (a plain MAX is blind to deleting a non-latest row). Children are
+  # stamped directly because they don't touch: their parent, so a set/block edit
+  # wouldn't move the session's timestamp.
+  def statistics_stamp
+    scoped_days = current_user.days.where(date: @from..Date.today)
+
+    case @tab
+    when "nutrition", "bien_etre", "hydratation"
+      # days.updated_at is bumped by the nutrition recompute and by note/steps/water edits.
+      [scoped_days.maximum(:updated_at), scoped_days.count]
+    when "training"
+      sessions = WorkoutSession.where(day_id: scoped_days.select(:id))
+      sets     = WorkoutSet.where(workout_session_id: sessions.select(:id))
+      [sessions.maximum(:updated_at), sessions.count, sets.maximum(:updated_at), sets.count]
+    when "cardio"
+      sessions = CardioSession.where(day_id: scoped_days.select(:id))
+      blocks   = CardioBlock.where(cardio_session_id: sessions.select(:id))
+      [sessions.maximum(:updated_at), sessions.count, blocks.maximum(:updated_at), blocks.count]
+    when "jeune"
+      fasting = current_user.fasting_sessions
+      [fasting.maximum(:updated_at), fasting.count]
+    end
+  end
+
   # ── Nutrition ───────────────────────────────────────────────────────────────
 
   def load_nutrition_stats
@@ -45,7 +82,7 @@ class StatisticsController < ApplicationController
                        .where(date: @from..Date.today)
                        .includes(
                          day_foods:   [:food, :day_food_group],
-                         day_recipes: [:day_food_group, { recipe: { recipe_items: :food } }, { day_recipe_items: :food }]
+                         day_recipes: [:day_food_group, { day_recipe_items: :food }]
                        )
                        .order(:date)
                        .to_a
@@ -121,9 +158,20 @@ class StatisticsController < ApplicationController
     goals = current_user.profile&.weekly_micronutrient_goals || {}
     @micronutrient_daily_goal = goals[selected_key] ? (goals[selected_key] / 7.0).round(2) : 0
 
-    @micronutrient_labels = range.map { |d| l(d, format: :short) }
-    @micronutrient_data = range.map do |d|
-      days_by_date[d] ? days_by_date[d].aggregated_micronutrients[selected_key.to_s].to_f : 0
+    # Daily for ≤ 30 days, weekly average otherwise — mirrors the calories/protein
+    # charts on the same tab so a 1-year view isn't a 365-point line.
+    daily_value = ->(d) { days_by_date[d] ? days_by_date[d].aggregated_micronutrients[selected_key.to_s].to_f : 0 }
+
+    if @period <= 30
+      @micronutrient_labels = range.map { |d| l(d, format: :short) }
+      @micronutrient_data   = range.map { |d| daily_value.call(d) }
+    else
+      weeks = range.group_by(&:beginning_of_week).sort
+      @micronutrient_labels = weeks.map { |w, _| l(w, format: :short) }
+      @micronutrient_data   = weeks.map do |_, wds|
+        vals = wds.filter_map { |d| daily_value.call(d) if days_by_date[d] }
+        vals.any? ? (vals.sum / vals.size.to_f).round(2) : 0
+      end
     end
   end
 
@@ -160,7 +208,7 @@ class StatisticsController < ApplicationController
   def fetch_period_workout_sessions
     WorkoutSession.joins(:day)
                   .where(days: { user_id: current_user.id, date: @from..Date.today })
-                  .includes(:day, workout_sets: :exercise)
+                  .includes(:day, :workout_sets)
                   .order("days.date")
   end
 
@@ -188,7 +236,7 @@ class StatisticsController < ApplicationController
   # % of total volume per body part, top 6 shown (% computed on the full total, not just the top 6)
   def build_muscle_group_breakdown(all_sets)
     body_vols = all_sets.each_with_object({}) do |ws, h|
-      bp = ws.exercise&.body_part
+      bp = ws.display_body_part
       next if bp.blank?
       h[bp] = (h[bp] || 0) + ws.weight_kg.to_f * ws.reps.to_i
     end
@@ -205,10 +253,25 @@ class StatisticsController < ApplicationController
   # all_sets already covers the full period for every exercise — filter in memory
   # instead of re-querying (previously a separate WorkoutSet query per exercise switch).
   def build_exercise_progress(all_sets, exercise)
-    sets    = all_sets.select { |ws| ws.exercise_id == exercise.id }
-    by_date = sets.group_by { |s| s.workout_session.day.date }
-    @progress_labels = by_date.keys.map { |d| l(d, format: :short) }
-    @progress_data   = by_date.values.map { |s| s.map(&:weight_kg).compact.max&.to_f || 0 }
+    sets        = all_sets.select { |ws| ws.exercise_id == exercise.id }
+    max_by_date = sets.group_by { |s| s.workout_session.day.date }
+                      .transform_values { |ss| ss.map(&:weight_kg).compact.map(&:to_f).max || 0 }
+
+    # Per training-date for ≤ 30 days, then best lift per week (per month at 1 year)
+    # so a heavily-trained lift over a long window stays readable.
+    if @period <= 30
+      dates = max_by_date.keys.sort
+      @progress_labels = dates.map { |d| l(d, format: :short) }
+      @progress_data   = dates.map { |d| max_by_date[d] }
+    elsif @period == 365
+      buckets = max_by_date.group_by { |d, _| d.beginning_of_month }.sort
+      @progress_labels = buckets.map { |m, _| l(m, format: :month_year) }
+      @progress_data   = buckets.map { |_, pairs| pairs.map(&:last).max }
+    else
+      buckets = max_by_date.group_by { |d, _| d.beginning_of_week }.sort
+      @progress_labels = buckets.map { |w, _| l(w, format: :short) }
+      @progress_data   = buckets.map { |_, pairs| pairs.map(&:last).max }
+    end
   end
 
   def build_training_streak(range)
@@ -231,12 +294,15 @@ class StatisticsController < ApplicationController
     all_sets.each do |ws|
       orm = estimated_one_rep_max(ws.weight_kg, ws.reps)
       next if orm.nil?
-      one_rm_by_exercise[ws.exercise_id] = [one_rm_by_exercise[ws.exercise_id] || 0.0, orm].max
+      # Clé [exercise_id, exercise_name] : deux exercices supprimés (exercise_id nil)
+      # ne fusionnent pas, et un exercice supprimé garde son nom figé.
+      key = [ws.exercise_id, ws.exercise_name]
+      one_rm_by_exercise[key] = [one_rm_by_exercise[key] || 0.0, orm].max
     end
 
-    one_rm_by_exercise.sort_by { |_, v| -v }.first(top).filter_map do |eid, orm|
-      name = localized_exercise_name(exercise_names[eid])
-      [name, orm] if name
+    one_rm_by_exercise.sort_by { |_, v| -v }.first(top).filter_map do |(eid, ex_name), orm|
+      name = localized_exercise_name(exercise_names[eid]) || ex_name
+      [name, orm] if name.present?
     end
   end
 
@@ -249,15 +315,17 @@ class StatisticsController < ApplicationController
     mid_date   = @from + (@period / 2).days
     sets_early = all_sets.select { |ws| ws.workout_session.day.date < mid_date }
     sets_late  = all_sets.select { |ws| ws.workout_session.day.date >= mid_date }
-    early_max  = sets_early.group_by(&:exercise_id).transform_values { |ss| ss.map(&:weight_kg).compact.map(&:to_f).max || 0 }
-    late_max   = sets_late.group_by(&:exercise_id).transform_values  { |ss| ss.map(&:weight_kg).compact.map(&:to_f).max || 0 }
+    ex_key     = ->(ws) { [ws.exercise_id, ws.exercise_name] }
+    early_max  = sets_early.group_by(&ex_key).transform_values { |ss| ss.map(&:weight_kg).compact.map(&:to_f).max || 0 }
+    late_max   = sets_late.group_by(&ex_key).transform_values  { |ss| ss.map(&:weight_kg).compact.map(&:to_f).max || 0 }
 
-    (early_max.keys & late_max.keys).filter_map { |eid|
-      early = early_max[eid]; late = late_max[eid]
+    (early_max.keys & late_max.keys).filter_map { |eid, ex_name|
+      early = early_max[[eid, ex_name]]; late = late_max[[eid, ex_name]]
       next if early.zero?
       gain = ((late - early) / early * 100).round(1)
       next if gain <= 0
-      name = localized_exercise_name(exercise_names[eid])
+      name = localized_exercise_name(exercise_names[eid]) || ex_name
+      next if name.blank?
       [name, gain, late]
     }.sort_by { |_, g, _| -g }.first(top)
   end
@@ -429,13 +497,6 @@ class StatisticsController < ApplicationController
       @wb_mood_data   = groups.map { |_, gd| avg_vals(gd.filter_map { |d| wb_by_date[d]&.mood }) }
       @wb_sleep_data  = groups.map { |_, gd| avg_vals(gd.filter_map { |d| wb_by_date[d]&.sleep_quality }) }
     end
-
-    # Weight trend
-    @weight_entries = current_user.weight_entries.where(date: @from..Date.today).order(:date)
-    if @weight_entries.any?
-      @weight_labels = @weight_entries.map { |we| l(we.date, format: :short) }
-      @weight_data   = @weight_entries.map { |we| we.weight_kg.to_f }
-    end
   end
 
   # ── Hydratation ──────────────────────────────────────────────────────────────
@@ -514,14 +575,13 @@ class StatisticsController < ApplicationController
 
   # ── Helpers ──────────────────────────────────────────────────────────────────
 
+  # Reads the day's denormalized totals (phase 2b) — no per-item summing.
   def day_macros(day)
-    foods   = day.day_foods
-    recipes = day.day_recipes
     {
-      calories: (foods.sum { |f| f.total_calories.to_f } + recipes.sum { |r| r.total_calories.to_f }).round,
-      proteins: (foods.sum { |f| f.total_proteins.to_f } + recipes.sum { |r| r.total_proteins.to_f }).round(1),
-      carbs:    (foods.sum { |f| f.total_carbs.to_f }    + recipes.sum { |r| r.total_carbs.to_f }).round(1),
-      fats:     (foods.sum { |f| f.total_fats.to_f }     + recipes.sum { |r| r.total_fats.to_f }).round(1)
+      calories: day.total_calories.round,
+      proteins: day.total_proteins.round(1),
+      carbs:    day.total_carbs.round(1),
+      fats:     day.total_fats.round(1)
     }
   end
 

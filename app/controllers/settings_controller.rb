@@ -8,6 +8,7 @@ class SettingsController < ApplicationController
     "preferences"     => { icon: "fa-toggle-on",      label_key: "preferences" },
     "day_food_groups" => { icon: "fa-utensils",       label_key: "food_groups" },
     "food_labels"     => { icon: "fa-tag",             label_key: "food_labels" },
+    "export"          => { icon: "fa-file-export",     label_key: "export" },
     "security"        => { icon: "fa-shield-halved",   label_key: "security" }
   }.freeze
 
@@ -54,8 +55,8 @@ class SettingsController < ApplicationController
   end
 
   def reset_data
-    current_user.reset_all_data!
-    redirect_to root_path, notice: t("controllers.settings.data_reset")
+    ResetUserDataJob.perform_later(current_user)
+    redirect_to root_path, notice: t("controllers.settings.data_reset_started")
   end
 
   private
