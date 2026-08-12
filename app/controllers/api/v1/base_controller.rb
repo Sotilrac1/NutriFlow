@@ -6,6 +6,14 @@ class Api::V1::BaseController < ApplicationController
   # Override ApplicationController's allow_browser which is HTML-only
   skip_before_action :verify_authenticity_token, raise: false
 
+  # ApplicationController#require_onboarding_complete! redirects to the web
+  # onboarding page (edit_onboarding_path) for any signed-in user whose
+  # profile isn't onboarding_complete?. That's an HTML-only web flow — the
+  # API has no such page to redirect to, so every JSON request from a user
+  # mid-onboarding was getting a 302 instead of a response. Mobile clients
+  # read onboarding_complete? off the profile payload themselves instead.
+  skip_before_action :require_onboarding_complete!
+
   rescue_from ActiveRecord::RecordNotFound do
     render json: { error: "Not found" }, status: :not_found
   end
