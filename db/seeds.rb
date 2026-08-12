@@ -453,13 +453,13 @@ ActiveRecord::Base.transaction do
       recipe = pick.call(dinner_recipes)
       if chance.call(0.08)
         day.day_recipes.create!(
-          recipe:, day_food_group: groups[:diner], customized: true,
+          recipe:, day_food_group: groups[:diner],
           day_recipe_items_attributes: pick.call(dinners).map { |f, g| { food_id: f.id, quantity: g, unit: "g" } }
         )
       elsif chance.call(0.5)
-        day.day_recipes.create!(recipe:, day_food_group: groups[:diner], use_recipe_quantity: true)
+        day.day_recipes.create!(recipe:, day_food_group: groups[:diner], log_use_whole: true)
       else
-        day.day_recipes.create!(recipe:, day_food_group: groups[:diner], quantity: intbtw.call(500, 650))
+        day.day_recipes.create!(recipe:, day_food_group: groups[:diner], log_quantity: intbtw.call(500, 650))
       end
     else
       log_meal.call(groups[:diner], pick.call(dinners))
